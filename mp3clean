@@ -11,6 +11,9 @@ id3_map = {
 	'comments': 'COMM',
 }
 
+DEBUG = False
+#DEBUG = True
+
 class FormatError (ValueError):
 	pass
 
@@ -22,9 +25,21 @@ def metainf(path):
 	return meta
 
 def get_first_of(metadata, *keys):
+	keys = list(keys)
 	while keys:
 		try:
-			return metadata[keys.pop(0)].text
+			k = keys.pop(0)
+			val = metadata[k].text
+			if isinstance(val, list) and all(map(lambda x: len(x) == 1 and isinstance(x, basestring), val)):
+				val = ''.join(val)
+			if not isinstance(val, list):
+				return val
+			elif len(val) == 1:
+				return val[0]
+			else:
+				print type(val)
+				raise FormatError("too many values in key %s: %r" % (k,val))
+			return metadata[k].text
 		except KeyError:
 			pass
 	raise FormatError("none of %r could be found in metadata" % (keys,))
@@ -46,7 +61,7 @@ def set_artist_and_name(path, artist, name):
 
 
 def artist_and_name(parts):
-	parts = [p.strip() for p in parts if len(p) > 0]
+	parts = list([p.strip() for p in parts if len(p) > 0])
 
 	while(len(parts) > 1 and parts[0].isdigit()):
 		# drop leading numeric fields
@@ -64,10 +79,14 @@ def artist_and_name(parts):
 		return parts[0], parts[2] # assume artist - album - track
 
 def titleize(s):
-	return " ".join([word.capitalize for word in s.split(" ")])
+	return " ".join([word.capitalize() for word in s.split()])
 
-def filename(*args):
-	return " - ".join(args)
+def filename(args):
+	joined = " - ".join(args)
+	joined = joined.replace("/",'-')
+	if isinstance(joined, unicode):
+		joined = joined.encode('ascii', 'ignore')
+	return joined
 
 def get_artist_and_name(dirty):
 	def num(char, s):
@@ -95,6 +114,7 @@ def get_artist_and_name(dirty):
 		return s
 
 	cleaned = unescape_url(dirty)
+	cleaned = cleaned.replace("_", " ")
 	cleaned = replace_if_too_many_plusses(cleaned)
 	cleaned = replace_if_too_many_dashes(cleaned)
 	cleaned = normalize_spaces(cleaned)
@@ -113,9 +133,9 @@ def rename(path):
 	try:
 		artist_and_name = get_artist_and_name(name)
 	except FormatError, e:
-		print "warning: couldn't extract name from filename: %r" % (name,)
+		print "-- warning: couldn't extract name from filename: %r" % (name,)
 		artist_and_name = map(titleize, meta_artist_and_name(path))
-	return os.path.join(base, name + "." + ext), artist_and_name
+	return os.path.join(base, filename(artist_and_name) + ext), artist_and_name
 
 
 mode = 'ask'
@@ -140,39 +160,53 @@ def repl(paths):
 			if response == 'a':
 				print "renaming all..."
 				mode = 'all'
-			elif response == 'q':
-				print "quitting..."
-				exit(1)
 			elif response == 'n':
 				print "skipping..."
 				return False
 			elif response == '' or response == 'y':
-				print
 				return True
+			else:
+				print "quitting..."
+				exit(1)
+		elif mode == 'all':
+			return True
+		else:
+			raise RuntimeError("invalid mode: %s" % (mode,))
 
 	for file in files:
+		print "--- processing: %s" % (file,)
 		try:
 			new_path, artist_and_name = rename(file)
 		except StandardError, err:
 			print "Failed: %s - %s" % (file, err)
+			if DEBUG: raise
 			continue
 		if _continue(filename(artist_and_name)):
-			print "renaming"
-			continue
-			#os.move(file, new_path)
-			#try:
-			#	set_artist_and_name(new_path, *artist_and_name)
-			#except RuntimeError, e:
-			#	print "(couldn't set metadata on song file)"
-			#	raise
+			if DEBUG: continue
+			os.rename(file, new_path)
+			try:
+				set_artist_and_name(new_path, *artist_and_name)
+			except RuntimeError, e:
+				print "(couldn't set metadata on song file)"
+				raise
+
+def _main(argv):
+	#TODO: optional args
+	# -r: rename
+	# -c: clear comments
+	# -o: output_dir
+	# -i: input_dir
+	repl(argv)
+
 
 def main():
 	import sys
 	try:
-		repl(sys.argv[1:])
+		_main(sys.argv[1:])
 		sys.exit(0)
 	except StandardError, e:
 		print "ERROR: %s" % (e,)
+		if DEBUG: raise
 		sys.exit(2)
 
 if __name__ == '__main__':
