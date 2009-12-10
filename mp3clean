@@ -1,0 +1,179 @@
+#!/usr/bin/env python
+
+import re
+import urllib
+import os
+import readline
+
+id3_map = {
+	'artist' : 'TPE1',
+	'name' : 'TIT2',
+	'comments': 'COMM',
+}
+
+class FormatError (ValueError):
+	pass
+
+def metainf(path):
+	import mutagen
+	meta = mutagen.File(path)
+	if meta is None:
+		raise FormatError("Couldn't extract file metadata")
+	return meta
+
+def get_first_of(metadata, *keys):
+	while keys:
+		try:
+			return metadata[keys.pop(0)].text
+		except KeyError:
+			pass
+	raise FormatError("none of %r could be found in metadata" % (keys,))
+
+def meta_artist_and_name(path):
+	meta = metainf(path)
+	artist = get_first_of(meta, id3_map['artist'])
+	name = get_first_of(meta, id3_map['name'])
+	return (artist, name)
+	return (artist, name)
+
+def set_artist_and_name(path, artist, name):
+	meta = metainf(path)
+	meta[id3_map['artist']].text = artist
+	meta[id3_map['name']].text = name
+	for comment_key in filter(lambda x: x.startswith("COMM"), meta.keys()):
+		meta[comment_key].text = ''
+	meta.save()
+
+
+def artist_and_name(parts):
+	parts = [p.strip() for p in parts if len(p) > 0]
+
+	while(len(parts) > 1 and parts[0].isdigit()):
+		# drop leading numeric fields
+		parts.pop(0)
+	
+	if(len(parts) > 3):
+		# if there's still more than 3 parts, drop all numeric fields
+		parts = filter(lambda x: not x.isdigit(), parts)
+
+	if len(parts) < 2:
+		raise FormatError("not enough parts: %r" % (parts))
+	if len(parts) == 2:
+		return tuple(parts)
+	else:
+		return parts[0], parts[2] # assume artist - album - track
+
+def titleize(s):
+	return " ".join([word.capitalize for word in s.split(" ")])
+
+def filename(*args):
+	return " - ".join(args)
+
+def get_artist_and_name(dirty):
+	def num(char, s):
+		return len(map(lambda x: x == char, s))
+
+	def unescape_url(s):
+		return urllib.unquote(s)
+
+	def replace_if_too_many(char, replacement, s):
+		num_char = num(char, s)
+		num_repl = num(replacement, s)
+		if num_char > num_repl:
+			return s.replace(char, replacement)
+		return s
+	
+	def replace_if_too_many_plusses(s):
+		return replace_if_too_many("-", " ", s)
+	
+	def replace_if_too_many_dashes(s):
+		return replace_if_too_many("-", " ", s)
+	
+	def normalize_spaces(s):
+		s = s.replace("   ", " - ")
+		s = re.subn(" +", " ", s)[0]
+		return s
+
+	cleaned = unescape_url(dirty)
+	cleaned = replace_if_too_many_plusses(cleaned)
+	cleaned = replace_if_too_many_dashes(cleaned)
+	cleaned = normalize_spaces(cleaned)
+	cleaned = " ".join([x.capitalize() for x in cleaned.split(" ")])
+	parts = cleaned.split(" - ")
+	if len(parts) == 1:
+		parts = cleaned.split("-")
+	named_parts = artist_and_name(parts)
+	return named_parts
+
+	
+def rename(path):
+	base, file = os.path.split(path)
+	name, ext = os.path.splitext(file)
+	ext = ext.lower()
+	try:
+		artist_and_name = get_artist_and_name(name)
+	except FormatError, e:
+		print "warning: couldn't extract name from filename: %r" % (name,)
+		artist_and_name = map(titleize, meta_artist_and_name(path))
+	return os.path.join(base, name + "." + ext), artist_and_name
+
+
+mode = 'ask'
+def repl(paths):
+	if not paths: paths = ["."]
+	files = []
+	for path in paths:
+		realpath = os.path.realpath(os.path.expanduser(path))
+		if os.path.isfile(realpath):
+			files.append(path)
+		else:
+			for file in os.listdir(realpath):
+				_path = os.path.join(realpath, file)
+				if os.path.isfile(_path):
+					files.append(_path)
+	print "renaming %s files..." % (len(files),)
+
+	def _continue(name):
+		global mode
+		if mode == 'ask':
+			response = raw_input("rename to %r ([y]es / [n]o / [a]ll / [q]uit)" % (name,)).rstrip()
+			if response == 'a':
+				print "renaming all..."
+				mode = 'all'
+			elif response == 'q':
+				print "quitting..."
+				exit(1)
+			elif response == 'n':
+				print "skipping..."
+				return False
+			elif response == '' or response == 'y':
+				print
+				return True
+
+	for file in files:
+		try:
+			new_path, artist_and_name = rename(file)
+		except StandardError, err:
+			print "Failed: %s - %s" % (file, err)
+			continue
+		if _continue(filename(artist_and_name)):
+			print "renaming"
+			continue
+			#os.move(file, new_path)
+			#try:
+			#	set_artist_and_name(new_path, *artist_and_name)
+			#except RuntimeError, e:
+			#	print "(couldn't set metadata on song file)"
+			#	raise
+
+def main():
+	import sys
+	try:
+		repl(sys.argv[1:])
+		sys.exit(0)
+	except StandardError, e:
+		print "ERROR: %s" % (e,)
+		sys.exit(2)
+
+if __name__ == '__main__':
+	main()
