@@ -7,12 +7,6 @@ import sys
 import readline
 import shutil
 
-id3_map = {
-	'artist' : 'TPE1',
-	'name' : 'TIT2',
-	'comments': 'COMM',
-}
-
 DEBUG = False
 INTERACTIVE = False
 
@@ -20,46 +14,21 @@ class FormatError (ValueError):
 	pass
 
 def metainf(path):
-	from mutagen.mp3 import MP3
-	meta = MP3(path)
-	if meta is None:
-		raise FormatError("Couldn't extract file metadata")
-	return meta
-
-def get_first_of(metadata, *keys):
-	keys = list(keys)
-	while keys:
-		try:
-			k = keys.pop(0)
-			val = metadata[k].text
-			if isinstance(val, list) and all(map(lambda x: len(x) == 1 and isinstance(x, basestring), val)):
-				val = ''.join(val)
-			if not isinstance(val, list):
-				return val
-			elif len(val) == 1:
-				return val[0]
-			else:
-				print type(val)
-				raise FormatError("too many values in key %s: %r" % (k,val))
-			return metadata[k].text
-		except KeyError:
-			pass
-	raise FormatError("none of %r could be found in metadata" % (keys,))
+	from tagpy import FileRef
+	return FileRef(path)
 
 def meta_artist_and_name(path):
 	meta = metainf(path)
-	artist = get_first_of(meta, id3_map['artist'])
-	name = get_first_of(meta, id3_map['name'])
-	return (artist, name)
+	artist = meta.tag().artist
+	name = meta.tag().title
 	return (artist, name)
 
 def set_metadata(path, artist, name, clear_comments=True):
 	meta = metainf(path)
-	meta[id3_map['artist']].text = artist
-	meta[id3_map['name']].text = name
+	meta.tag().artist = artist
+	meta.tag().title = name
 	if clear_comments:
-		for comment_key in filter(lambda x: x.startswith("COMM"), meta.keys()):
-			meta[comment_key].text = ''
+		meta.tag().comment = ''
 	meta.save()
 
 
