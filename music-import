@@ -8,7 +8,7 @@ import readline
 import shutil
 
 DEBUG = False
-INTERACTIVE = False
+INTERACTIVE = True
 
 class FormatError (ValueError):
 	pass
@@ -112,7 +112,7 @@ def rename(path, output_dir=None):
 	return os.path.join(output_dir, filename(artist_and_name) + ext), artist_and_name
 
 
-def repl(paths, output_dir=None, clear_comments=False, mp3gain=False):
+def repl(paths, output_dir=None, update_tags=True, clear_comments=False, mp3gain=False):
 	global INTERACTIVE
 	if not paths: paths = ["."]
 	files = []
@@ -132,7 +132,7 @@ def repl(paths, output_dir=None, clear_comments=False, mp3gain=False):
 	def _continue(name):
 		global INTERACTIVE
 		if INTERACTIVE:
-			response = raw_input("rename to %r ([y]es / [n]o / [a]ll / [q]uit)" % (name,)).rstrip()
+			response = raw_input("rename to %r ([y]es / [n]o / [a]ll / [q]uit): " % (name,)).rstrip()
 			if response == 'a':
 				print "renaming all..."
 				INTERACTIVE = False
@@ -164,12 +164,13 @@ def repl(paths, output_dir=None, clear_comments=False, mp3gain=False):
 			continue
 		if _continue(filename(artist_and_name)):
 			if DEBUG: continue
-			treat_file(file, new_path, artist_and_name, clear_comments=clear_comments, mp3gain=mp3gain)
+			treat_file(file, new_path, artist_and_name, update_tags=update_tags, clear_comments=clear_comments, mp3gain=mp3gain)
 			renamed += 1
 	return renamed, failed
 
-def treat_file(file, new_path, artist_and_name, clear_comments=False, mp3gain=False):
+def treat_file(file, new_path, artist_and_name, update_tags=True, clear_comments=False, mp3gain=False):
 	shutil.move(file, new_path)
+	if not update_tags: return
 	try:
 		set_metadata(new_path, *artist_and_name, clear_comments=clear_comments)
 	except RuntimeError, e:
@@ -199,15 +200,18 @@ def _main(argv):
 	parser = OptionParser(usage="usage: %prog [options] [input-file-or-path]")
 	parser.add_option('-c','--clear-comments', dest='clear_comments', action='store_true', help='clear comments (%default)', default=False)
 	parser.add_option('-o','--output', dest='output_dir', action='store', help='output directory', default=None)
-	parser.add_option('-i', '--interactive', dest='interactive', action='store_true', help='interactive mode (%default)', default=False)
+	parser.add_option('-i', '--interactive', dest='interactive', action='store_true', help='interactive mode (%default)', default=True)
 	parser.add_option('-d', '--debug', dest='debug', action='store_true', help='debug mode')
+	parser.add_option('-t', '--tags', dest='update_tags', action='store_true', help='overwrite id3 tag info', default=True)
+	parser.add_option('--no-tags', dest='update_tags', action='store_false')
 	parser.add_option('-n', '--notify', dest='notify', action='store_true', help='notify on completion (%default)', default=True)
+	parser.add_option('--no-notify', dest='notify', action='store_false', help='don\'t notify on completion')
 	parser.add_option('-g', '--mp3gain', dest='mp3gain', action='store_true', help='apply mp3gain (%default)', default=False)
 
 	options, args = parser.parse_args(argv)
 	DEBUG = options.debug
 	INTERACTIVE = options.interactive
-	files_changed, failed = repl(args, output_dir=options.output_dir, clear_comments=options.clear_comments, mp3gain=options.mp3gain)
+	files_changed, failed = repl(args, output_dir=options.output_dir, update_tags=options.update_tags, clear_comments=options.clear_comments, mp3gain=options.mp3gain)
 	if options.notify:
 		message = "%s files imported" % (files_changed,)
 		if failed:
