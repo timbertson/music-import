@@ -51,7 +51,7 @@ def artist_and_name(parts):
 		return parts[0], parts[2] # assume artist - album - track
 
 def titleize(s):
-	return " ".join([word.capitalize() for word in s.split()])
+	return s.title()
 
 def filename(args):
 	joined = " - ".join(args)
@@ -90,7 +90,7 @@ def get_artist_and_name(dirty):
 	cleaned = replace_if_too_many_plusses(cleaned)
 	cleaned = replace_if_too_many_dashes(cleaned)
 	cleaned = normalize_spaces(cleaned)
-	cleaned = " ".join([x.capitalize() for x in cleaned.split(" ")])
+	cleaned = cleaned.title()
 	parts = cleaned.split(" - ")
 	if len(parts) == 1:
 		parts = cleaned.split("-")
@@ -201,6 +201,7 @@ def _main(argv):
 	parser.add_option('-c','--clear-comments', dest='clear_comments', action='store_true', help='clear comments (%default)', default=False)
 	parser.add_option('-o','--output', dest='output_dir', action='store', help='output directory', default=None)
 	parser.add_option('-i', '--interactive', dest='interactive', action='store_true', help='interactive mode (%default)', default=True)
+	parser.add_option('-q', '--quiet', dest='interactive', action='store_false', help='quiet (non-interactive) mode')
 	parser.add_option('-d', '--debug', dest='debug', action='store_true', help='debug mode')
 	parser.add_option('-t', '--tags', dest='update_tags', action='store_true', help='overwrite id3 tag info', default=True)
 	parser.add_option('--no-tags', dest='update_tags', action='store_false')
