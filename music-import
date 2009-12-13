@@ -52,7 +52,7 @@ def artist_and_name(parts):
 
 def titleize(s):
 	titled = s.title()
-	titled = re.subn("'[A-Z]", lambda x: x.group(0).lower(), titled)
+	titled = re.subn("'[A-Z]", lambda x: x.group(0).lower(), titled)[0]
 	return titled
 
 def filename(args):
@@ -151,7 +151,6 @@ def repl(paths, output_dir=None, update_tags=True, clear_comments=False, mp3gain
 			return True
 
 	for file in files:
-		print "--- processing: %s" % (file,)
 		try:
 			shutil.copy(file, os.path.expanduser('~/.local/share/Trash/files'))
 		except IOError:
@@ -165,6 +164,7 @@ def repl(paths, output_dir=None, update_tags=True, clear_comments=False, mp3gain
 			if DEBUG: raise
 			continue
 		if _continue(filename(artist_and_name)):
+			print "--- processed: %s" % (new_path,)
 			if DEBUG: continue
 			treat_file(file, new_path, artist_and_name, update_tags=update_tags, clear_comments=clear_comments, mp3gain=mp3gain)
 			renamed += 1
@@ -205,7 +205,7 @@ def _main(argv):
 	parser.add_option('-i', '--interactive', dest='interactive', action='store_true', help='interactive mode (%default)', default=True)
 	parser.add_option('-q', '--quiet', dest='interactive', action='store_false', help='quiet (non-interactive) mode')
 	parser.add_option('-d', '--debug', dest='debug', action='store_true', help='debug mode')
-	parser.add_option('-t', '--tags', dest='update_tags', action='store_true', help='overwrite id3 tag info', default=True)
+	parser.add_option('-t', '--tags', dest='update_tags', action='store_true', help='overwrite id3 tag info (%default)', default=True)
 	parser.add_option('--no-tags', dest='update_tags', action='store_false')
 	parser.add_option('-n', '--notify', dest='notify', action='store_true', help='notify on completion (%default)', default=True)
 	parser.add_option('--no-notify', dest='notify', action='store_false', help='don\'t notify on completion')
