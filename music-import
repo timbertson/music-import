@@ -90,7 +90,7 @@ def get_artist_and_name(dirty):
 	cleaned = replace_if_too_many_plusses(cleaned)
 	cleaned = replace_if_too_many_dashes(cleaned)
 	cleaned = normalize_spaces(cleaned)
-	cleaned = cleaned.title()
+	cleaned = titleize(cleaned)
 	parts = cleaned.split(" - ")
 	if len(parts) == 1:
 		parts = cleaned.split("-")
@@ -101,7 +101,7 @@ def get_artist_and_name(dirty):
 def rename(path, output_dir=None):
 	base, file = os.path.split(path)
 	name, ext = os.path.splitext(file)
-	if output_dir is None:
+	if not output_dir:
 		output_dir = base # whatever directory it started in
 	ext = ext.lower()
 	try:
