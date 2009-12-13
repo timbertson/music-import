@@ -51,7 +51,9 @@ def artist_and_name(parts):
 		return parts[0], parts[2] # assume artist - album - track
 
 def titleize(s):
-	return s.title()
+	titled = s.title()
+	titled = re.subn("'[A-Z]", lambda x: x.group(0).lower(), titled)
+	return titled
 
 def filename(args):
 	joined = " - ".join(args)
