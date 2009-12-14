@@ -59,7 +59,7 @@ def filename(args):
 	joined = " - ".join(args)
 	joined = joined.replace("/",'-')
 	if isinstance(joined, unicode):
-		joined = joined.encode('ascii', 'ignore')
+		joined = joined.encode('utf-8', 'ignore')
 	return joined
 
 def get_artist_and_name(dirty):
