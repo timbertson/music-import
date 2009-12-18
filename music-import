@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import re
 import urllib
 import os
@@ -131,24 +130,32 @@ def repl(paths, output_dir=None, update_tags=True, clear_comments=False, mp3gain
 					files.append(_path)
 	print "renaming %s files..." % (len(files),)
 
-	def _continue(name):
+	def confirm_artist_and_name(artist_and_name):
 		global INTERACTIVE
 		if INTERACTIVE:
-			response = raw_input("rename to %r ([y]es / [n]o / [a]ll / [q]uit): " % (name,)).rstrip()
-			if response == 'a':
-				print "renaming all..."
-				INTERACTIVE = False
-				return True
-			elif response == 'n':
-				print "skipping..."
-				return False
-			elif response == '' or response == 'y':
-				return True
-			else:
-				print "quitting..."
-				exit(1)
-		else:
-			return True
+			while True:
+				response = raw_input("rename to %r ([y]es / [n]o / [e]dit / [a]ll / [q]uit): " % (filename(artist_and_name),)).rstrip()
+				if response == 'a':
+					print "renaming all..."
+					INTERACTIVE = False
+					break
+				elif response == 'n':
+					print "skipping..."
+					return None
+				elif response == 'e':
+					text = raw_input("Enter the new filename: ")
+					if ' - ' in text:
+						artist_and_name = map(titleize, text.split(' - ', 1))
+					else:
+						print "invalid name: " % (text,)
+				elif response == '' or response == 'y':
+					break
+				elif response == 'q':
+					print "quitting..."
+					exit(1)
+				else:
+					continue
+			return artist_and_name
 
 	for file in files:
 		try:
@@ -163,7 +170,8 @@ def repl(paths, output_dir=None, update_tags=True, clear_comments=False, mp3gain
 			failed += 1
 			if DEBUG: raise
 			continue
-		if _continue(filename(artist_and_name)):
+		artist_and_name = confirm_artist_and_name(artist_and_name)
+		if artist_and_name is not None:
 			print "--- processed: %s" % (new_path,)
 			if DEBUG: continue
 			treat_file(file, new_path, artist_and_name, update_tags=update_tags, clear_comments=clear_comments, mp3gain=mp3gain)
@@ -229,8 +237,7 @@ def main():
 		sys.exit(0)
 	except StandardError, e:
 		print "ERROR: %s" % (e,)
-		if DEBUG: raise
-		sys.exit(2)
+		raise
 
 if __name__ == '__main__':
 	main()
