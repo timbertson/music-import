@@ -52,6 +52,8 @@ def artist_and_name(parts):
 def titleize(s):
 	titled = s.title()
 	titled = re.subn("'[A-Z]", lambda x: x.group(0).lower(), titled)[0]
+	roman_numeral = re.compile(r"\b([xiv]+)\b", re.I)
+	titled = re.subn(roman_numeral, lambda x: x.group(0).upper(), titled)[0]
 	return titled
 
 def filename(args):
@@ -61,7 +63,10 @@ def filename(args):
 		joined = joined.encode('utf-8', 'ignore')
 	return joined
 
-def get_artist_and_name(dirty):
+def get_meta_artist_and_name(path):
+		return map(titleize, meta_artist_and_name(path))
+
+def get_filename_artist_and_name(dirty):
 	def num(char, s):
 		return len(map(lambda x: x == char, s))
 
@@ -95,21 +100,31 @@ def get_artist_and_name(dirty):
 	parts = cleaned.split(" - ")
 	if len(parts) == 1:
 		parts = cleaned.split("-")
+	if DEBUG: print "Parts: %r" % (parts,)
 	named_parts = artist_and_name(parts)
 	return named_parts
 
-	
-def rename(path, output_dir=None):
+def get_path_bits(path):
 	base, file = os.path.split(path)
 	name, ext = os.path.splitext(file)
+	ext = ext.lower()
+	return base, name, ext
+
+def get_artist_and_name(name, path):
+	try:
+		artist_and_name = get_filename_artist_and_name(name)
+	except FormatError, e:
+		if path is None:
+			return None
+		print "-- warning: couldn't extract name from filename: %r" % (name,)
+		artist_and_name = get_meta_artist_and_name(path)
+	return artist_and_name
+
+def rename(path, output_dir=None):
+	base, name, ext = get_path_bits(path)
 	if not output_dir:
 		output_dir = base # whatever directory it started in
-	ext = ext.lower()
-	try:
-		artist_and_name = get_artist_and_name(name)
-	except FormatError, e:
-		print "-- warning: couldn't extract name from filename: %r" % (name,)
-		artist_and_name = map(titleize, meta_artist_and_name(path))
+	artist_and_name = get_artist_and_name(name, path)
 	return os.path.join(output_dir, filename(artist_and_name) + ext), artist_and_name
 
 
@@ -134,7 +149,7 @@ def repl(paths, output_dir=None, update_tags=True, clear_comments=False, mp3gain
 		global INTERACTIVE
 		if INTERACTIVE:
 			while True:
-				response = raw_input("rename to %r ([y]es / [n]o / [e]dit / [a]ll / [q]uit): " % (filename(artist_and_name),)).rstrip()
+				response = raw_input("rename to %r ([Y]es / [n]o / [e]dit / [a]ll / [q]uit): " % (filename(artist_and_name),)).rstrip()
 				if response == 'a':
 					print "renaming all..."
 					INTERACTIVE = False
@@ -218,10 +233,19 @@ def _main(argv):
 	parser.add_option('-n', '--notify', dest='notify', action='store_true', help='notify on completion (%default)', default=True)
 	parser.add_option('--no-notify', dest='notify', action='store_false', help='don\'t notify on completion')
 	parser.add_option('-g', '--mp3gain', dest='mp3gain', action='store_true', help='apply mp3gain (%default)', default=False)
+	parser.add_option('--test', dest='test', action='store', help='test mode (try out a string)', default=None)
 
 	options, args = parser.parse_args(argv)
 	DEBUG = options.debug
 	INTERACTIVE = options.interactive
+	if options.test is not None:
+		print repr(options.test)
+		artist_and_name = get_artist_and_name(options.test, None)
+		if artist_and_name is None:
+			print "ERROR: Could not parse: %s" % (options.test,)
+		else:
+			print filename(artist_and_name)
+		return
 	files_changed, failed = repl(args, output_dir=options.output_dir, update_tags=options.update_tags, clear_comments=options.clear_comments, mp3gain=options.mp3gain)
 	if options.notify:
 		message = "%s files imported" % (files_changed,)
