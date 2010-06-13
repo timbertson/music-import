@@ -170,7 +170,7 @@ def repl(paths, output_dir=None, update_tags=True, clear_comments=False, mp3gain
 					exit(1)
 				else:
 					continue
-			return artist_and_name
+		return artist_and_name
 
 	for file in files:
 		try:
