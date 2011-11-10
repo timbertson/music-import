@@ -24,8 +24,8 @@ def meta_artist_and_name(path):
 
 def set_metadata(path, artist, name, clear_comments=True):
 	meta = metainf(path)
-	meta.tag().artist = artist
-	meta.tag().title = name
+	meta.tag().artist = artist.decode('utf-8')
+	meta.tag().title = name.decode('utf-8')
 	if clear_comments:
 		meta.tag().comment = ''
 	meta.save()
