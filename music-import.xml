@@ -9,7 +9,9 @@
 	</description>
 	<group main="music-import">
 		<command name="run" path="music-import">
-			<runner interface="http://repo.roscidus.com/python/python"/>
+			<runner interface="http://repo.roscidus.com/python/python">
+				<version before="3.0"/>
+			</runner>
 		</command>
 		<requires interface="http://gfxmonk.net/dist/0install/tagpy.xml"/>
 		<requires interface="http://gfxmonk.net/dist/0install/mp3gain.xml"/>

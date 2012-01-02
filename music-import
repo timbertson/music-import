@@ -24,8 +24,8 @@ def meta_artist_and_name(path):
 
 def set_metadata(path, artist, name, clear_comments=True):
 	meta = metainf(path)
-	meta.tag().artist = artist.decode('utf-8')
-	meta.tag().title = name.decode('utf-8')
+	meta.tag().artist = artist
+	meta.tag().title = name
 	if clear_comments:
 		meta.tag().comment = ''
 	meta.save()
@@ -59,8 +59,6 @@ def titleize(s):
 def filename(args):
 	joined = " - ".join(args)
 	joined = joined.replace("/",'-')
-	if isinstance(joined, unicode):
-		joined = joined.encode('utf-8', 'ignore')
 	return joined
 
 def get_meta_artist_and_name(path):
@@ -125,7 +123,7 @@ def rename(path, output_dir=None):
 	if not output_dir:
 		output_dir = base # whatever directory it started in
 	artist_and_name = get_artist_and_name(name, path)
-	return os.path.join(output_dir, filename(artist_and_name) + ext), artist_and_name
+	return os.path.join(output_dir, "%s%s" % (filename(artist_and_name), ext)), artist_and_name
 
 
 def repl(paths, output_dir=None, update_tags=True, clear_comments=False, mp3gain=False):
@@ -179,6 +177,7 @@ def repl(paths, output_dir=None, update_tags=True, clear_comments=False, mp3gain
 			print "--- warning: could not make backup in trash"
 			INTERACTIVE = True
 		try:
+			file = file.decode('utf-8')
 			new_path, artist_and_name = rename(file, output_dir)
 		except StandardError, err:
 			print "Failed: %s - %s" % (file, err)
@@ -194,6 +193,7 @@ def repl(paths, output_dir=None, update_tags=True, clear_comments=False, mp3gain
 	return renamed, failed
 
 def treat_file(file, new_path, artist_and_name, update_tags=True, clear_comments=False, mp3gain=False):
+	new_path = new_path.encode('utf-8')
 	shutil.move(file, new_path)
 	if not update_tags: return
 	try:
@@ -244,8 +244,10 @@ def _main(argv):
 		if artist_and_name is None:
 			print "ERROR: Could not parse: %s" % (options.test,)
 		else:
-			print filename(artist_and_name)
+			print filename(artist_and_name).encode('utf-8')
 		return
+	if options.output_dir:
+		options.output_dir = options.output_dir.decode('utf-8')
 	files_changed, failed = repl(args, output_dir=options.output_dir, update_tags=options.update_tags, clear_comments=options.clear_comments, mp3gain=options.mp3gain)
 	if options.notify:
 		message = "%s files imported" % (files_changed,)
