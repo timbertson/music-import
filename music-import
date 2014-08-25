@@ -116,7 +116,7 @@ def get_artist_and_name(name, path):
 			return None
 		print "-- warning: couldn't extract name from filename: %r" % (name,)
 		artist_and_name = get_meta_artist_and_name(path)
-	return artist_and_name
+	return confirm_artist_and_name(artist_and_name)
 
 def rename(path, output_dir=None):
 	base, name, ext = get_path_bits(path)
@@ -124,6 +124,33 @@ def rename(path, output_dir=None):
 		output_dir = base # whatever directory it started in
 	artist_and_name = get_artist_and_name(name, path)
 	return os.path.join(output_dir, "%s%s" % (filename(artist_and_name), ext)), artist_and_name
+
+def confirm_artist_and_name(artist_and_name):
+	global INTERACTIVE
+	if INTERACTIVE:
+		while True:
+			response = raw_input("rename to %r ([Y]es / [n]o / [e]dit / [a]ll / [q]uit): " % (filename(artist_and_name),)).rstrip()
+			if response == 'a':
+				print "renaming all..."
+				INTERACTIVE = False
+				break
+			elif response == 'n':
+				print "skipping..."
+				return None
+			elif response == 'e':
+				text = raw_input("Enter the new filename: ")
+				if ' - ' in text:
+					artist_and_name = map(titleize, text.split(' - ', 1))
+				else:
+					print "invalid name: " % (text,)
+			elif response == '' or response == 'y':
+				break
+			elif response == 'q':
+				print "quitting..."
+				exit(1)
+			else:
+				continue
+	return artist_and_name
 
 
 def repl(paths, output_dir=None, update_tags=True, clear_comments=False, mp3gain=False):
@@ -143,33 +170,6 @@ def repl(paths, output_dir=None, update_tags=True, clear_comments=False, mp3gain
 					files.append(_path)
 	print "renaming %s files..." % (len(files),)
 
-	def confirm_artist_and_name(artist_and_name):
-		global INTERACTIVE
-		if INTERACTIVE:
-			while True:
-				response = raw_input("rename to %r ([Y]es / [n]o / [e]dit / [a]ll / [q]uit): " % (filename(artist_and_name),)).rstrip()
-				if response == 'a':
-					print "renaming all..."
-					INTERACTIVE = False
-					break
-				elif response == 'n':
-					print "skipping..."
-					return None
-				elif response == 'e':
-					text = raw_input("Enter the new filename: ")
-					if ' - ' in text:
-						artist_and_name = map(titleize, text.split(' - ', 1))
-					else:
-						print "invalid name: " % (text,)
-				elif response == '' or response == 'y':
-					break
-				elif response == 'q':
-					print "quitting..."
-					exit(1)
-				else:
-					continue
-		return artist_and_name
-
 	for file in files:
 		try:
 			shutil.copy(file, os.path.expanduser('~/.local/share/Trash/files'))
@@ -184,7 +184,6 @@ def repl(paths, output_dir=None, update_tags=True, clear_comments=False, mp3gain
 			failed += 1
 			if DEBUG: raise
 			continue
-		artist_and_name = confirm_artist_and_name(artist_and_name)
 		if artist_and_name is not None:
 			print "--- processed: %s" % (new_path,)
 			if DEBUG: continue
