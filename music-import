@@ -9,27 +9,60 @@ import shutil
 DEBUG = False
 INTERACTIVE = True
 
+from mutagen.mp3 import EasyMP3
+from mutagen.easyid3 import EasyID3
+EasyID3.RegisterTextKey("comment", "COMM")
+
 class FormatError (ValueError):
 	pass
 
-def metainf(path):
-	from tagpy import FileRef
-	return FileRef(path)
+class MetaInf(object):
+	def __init__(self, path):
+		self.meta = EasyMP3(path, ID3=EasyID3)
+		self._tags = None
+	
+	@property
+	def tags(self):
+		if self._tags is None:
+			if self.meta.tags is None:
+				self.meta.add_tags()
+			self._tags = self.meta.tags
+		return self._tags
+
+	@property
+	def artist(self):
+		self.tags['artist']
+	
+	def set_artist(self, val):
+		self.tags['artist'] = val
+
+	@property
+	def title(self):
+		self.tags['title']
+
+	def set_title(self, val):
+		self.tags['title'] = val
+	
+	def delete_comment(self):
+		if 'comment' in self.tags:
+			del self.tags['comment']
+	
+	def save(self):
+		self.tags.save(v1=0)
 
 def meta_artist_and_name(path):
-	meta = metainf(path)
-	artist = meta.tag().artist
-	name = meta.tag().title
-	return (artist, name)
+	meta = MetaInf(path)
+	return (meta.artist, meta.title)
 
 def set_metadata(path, artist, name, clear_comments=True):
-	meta = metainf(path)
-	meta.tag().artist = artist
-	meta.tag().title = name
-	if clear_comments:
-		meta.tag().comment = ''
-	meta.save()
+	meta = MetaInf(path)
+	meta.set_artist(artist)
+	meta.set_title(name)
 
+	if clear_comments:
+		meta.delete_comment()
+
+	meta.save()
 
 def artist_and_name(parts):
 	parts = list([p.strip() for p in parts if len(p) > 0])
@@ -191,15 +224,24 @@ def repl(paths, output_dir=None, update_tags=True, clear_comments=False, mp3gain
 			renamed += 1
 	return renamed, failed
 
+
 def treat_file(file, new_path, artist_and_name, update_tags=True, clear_comments=False, mp3gain=False):
 	new_path = new_path.encode('utf-8')
+	# print("Moving %s -> %s" % (file, new_path))
 	shutil.move(file, new_path)
-	if not update_tags: return
-	try:
-		set_metadata(new_path, *artist_and_name, clear_comments=clear_comments)
-	except RuntimeError, e:
-		print "(couldn't set metadata on song file: %s)" % (e,)
-		if DEBUG: raise
+	if update_tags:
+		try:
+			set_metadata(new_path, *artist_and_name, clear_comments=clear_comments)
+
+		except RuntimeError, e:
+			print "(couldn't set metadata on song file: %s)" % (e,)
+			if DEBUG: raise
+
+		# XXX HACK to workaround tablig bug with inverted utf-16 bytes:
+		# if we read the transposed data and save it back, it gets re-transposed
+		# and ends up correct:
+		else:
+			set_metadata(new_path, *meta_artist_and_name(new_path))
 	
 	if mp3gain:
 		apply_mp3gain(new_path)
