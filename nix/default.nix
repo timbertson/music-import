@@ -8,7 +8,7 @@ mkDerivation {
 	buildInputs = let py = python2Packages; in [
 		makeWrapper
 		mp3gain
-		py.readline py.mutagen
+		py.gnureadline py.mutagen
 		py.python py.pygtk py.notify
 	];
 	buildPhase = "true";
