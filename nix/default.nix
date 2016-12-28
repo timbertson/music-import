@@ -20,5 +20,8 @@ mkDerivation {
 			--set PYTHONPATH "$PYTHONPATH" \
 			;
 	'';
+	shellHook = ''
+		export PATH="${builtins.getEnv "PWD"}:$PATH";
+	'';
 }
 

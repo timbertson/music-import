@@ -20,6 +20,7 @@ class FormatError (ValueError):
 
 class MetaInf(object):
 	def __init__(self, path):
+		self.path = path
 		self.meta = EasyMP3(path, ID3=EasyID3)
 		self._tags = None
 	
@@ -55,7 +56,7 @@ class MetaInf(object):
 	
 	def save(self):
 		if DEBUG: print("Saving tags: %r" % self.tags)
-		self.tags.save(v1=0)
+		self.tags.save(self.path, v1=0)
 
 def meta_artist_and_name(path):
 	meta = MetaInf(path)
@@ -63,7 +64,7 @@ def meta_artist_and_name(path):
 
 def set_metadata(path, artist, name, clear_comments=True):
 	meta = MetaInf(path)
-	if DEBUG: print("Updating metadata (%r) with artist=%r, name=%r" % (meta, artist, name))
+	if DEBUG: print("Updating metadata (%r) with artist=%r, name=%r" % (path, artist, name))
 	meta.set_artist(artist)
 	meta.set_title(name)
 
@@ -226,7 +227,7 @@ def repl(paths, output_dir=None, update_tags=True, clear_comments=False, mp3gain
 			if DEBUG: raise
 			continue
 		if artist_and_name is not None:
-			print("--- processed: %s" % (new_path,))
+			print("--- processing: %s" % (new_path,))
 			treat_file(file, new_path, artist_and_name, update_tags=update_tags, clear_comments=clear_comments, mp3gain=mp3gain)
 			renamed += 1
 	return renamed, failed
@@ -234,12 +235,12 @@ def repl(paths, output_dir=None, update_tags=True, clear_comments=False, mp3gain
 
 def treat_file(file, new_path, artist_and_name, update_tags=True, clear_comments=False, mp3gain=False):
 	new_path = new_path.encode('utf-8')
-	if DEBUG: print("Moving %s -> %s" % (file, new_path))
+	if DEBUG: print("Treating %s -> %s" % (file, new_path))
 	if DRY_RUN: return
 	if update_tags:
-		if DEBUG: print("Updating tags...")
+		if DEBUG: print("Updating tags in %s" % (file,))
 		try:
-			set_metadata(new_path, *artist_and_name, clear_comments=clear_comments)
+			set_metadata(file, *artist_and_name, clear_comments=clear_comments)
 
 		except RuntimeError, e:
 			print("(couldn't set metadata on song file: %s)" % (e,))
@@ -247,8 +248,12 @@ def treat_file(file, new_path, artist_and_name, update_tags=True, clear_comments
 			if DEBUG: raise
 	
 	if mp3gain:
-		apply_mp3gain(new_path)
-			
+		if DEBUG: print("Applying mp3gain to %s" % (file,))
+		apply_mp3gain(file)
+	if DEBUG: print("Moving %s -> %s" % (file, new_path))
+	shutil.move(file, new_path)
+
+
 def apply_mp3gain(path):
 	import subprocess
 	cmd = subprocess.Popen(['mp3gain', '-r', '-c', '-m', '2', '-s', 'r', path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
