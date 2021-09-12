@@ -280,7 +280,7 @@ def _main(argv):
 	parser.add_option('--dry-run', action='store_true', help='dry run (use with --debug)')
 	parser.add_option('-t', '--tags', dest='update_tags', action='store_true', help='overwrite id3 tag info (%default)', default=True)
 	parser.add_option('--no-tags', dest='update_tags', action='store_false')
-	parser.add_option('-n', '--notify', dest='notify', action='store_true', help='notify on completion (%default)', default=True)
+	parser.add_option('-n', '--notify', dest='notify', action='store_true', help='notify on completion (%default)', default=False)
 	parser.add_option('--no-notify', dest='notify', action='store_false', help='don\'t notify on completion')
 	parser.add_option('-g', '--mp3gain', dest='mp3gain', action='store_true', help='apply mp3gain (%default)', default=False)
 	parser.add_option('--test', dest='test', action='store', help='test mode (try out a string)', default=None)
