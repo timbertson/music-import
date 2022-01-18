@@ -5,11 +5,10 @@ with stdenv;
 mkDerivation {
 	name = "music-import";
 	inherit src;
-	buildInputs = let py = python2Packages; in [
+	buildInputs = let py = python3Packages; in [
 		makeWrapper
 		mp3gain
 		py.gnureadline py.mutagen
-		py.python py.pygtk py.notify
 	];
 	buildPhase = "true";
 	installPhase = ''
