@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import print_function
 import re
-import urllib
+from urllib.parse import unquote
 import os
 import sys
 import readline
@@ -82,7 +82,7 @@ def artist_and_name(parts):
 	
 	if(len(parts) > 3):
 		# if there's still more than 3 parts, drop all numeric fields
-		parts = filter(lambda x: not x.isdigit(), parts)
+		parts = list(filter(lambda x: not x.isdigit(), parts))
 
 	if len(parts) < 2:
 		raise FormatError("not enough parts: %r" % (parts))
@@ -104,14 +104,14 @@ def filename(args):
 	return joined
 
 def get_meta_artist_and_name(path):
-		return map(titleize, meta_artist_and_name(path))
+		return list(map(titleize, meta_artist_and_name(path)))
 
 def get_filename_artist_and_name(dirty):
 	def num(char, s):
-		return len(map(lambda x: x == char, s))
+		return len(list(map(lambda x: x == char, s)))
 
 	def unescape_url(s):
-		return urllib.unquote(s)
+		return unquote(s)
 
 	def replace_if_too_many(char, replacement, s):
 		num_char = num(char, s)
@@ -171,7 +171,7 @@ def confirm_artist_and_name(artist_and_name):
 	global INTERACTIVE
 	if INTERACTIVE:
 		while True:
-			response = raw_input("rename to %r ([Y]es / [n]o / [e]dit / [a]ll / [q]uit): " % (filename(artist_and_name),)).rstrip()
+			response = input("rename to %r ([Y]es / [n]o / [e]dit / [a]ll / [q]uit): " % (filename(artist_and_name),)).rstrip()
 			if response == 'a':
 				print("renaming all...")
 				INTERACTIVE = False
@@ -180,9 +180,9 @@ def confirm_artist_and_name(artist_and_name):
 				print("skipping...")
 				return None
 			elif response == 'e':
-				text = raw_input("Enter the new filename: ")
+				text = input("Enter the new filename: ")
 				if ' - ' in text:
-					artist_and_name = map(titleize, text.split(' - ', 1))
+					artist_and_name = list(map(titleize, text.split(' - ', 1)))
 				else:
 					print("invalid name: " % (text,))
 			elif response == '' or response == 'y':
